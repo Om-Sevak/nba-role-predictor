@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import time
 from requests.exceptions import Timeout, ConnectionError, RequestException
@@ -150,6 +151,24 @@ numeric_df_imputed = imputer.fit_transform(numeric_df)
 scaler = StandardScaler()
 stats_scaled = scaler.fit_transform(numeric_df_imputed)
 
+# Perform PCA
+pca = PCA(n_components=6)  # Set the number of components you need
+df_pca = pca.fit_transform(stats_scaled)
+
+print("Explained variance ratio:", pca.explained_variance_ratio_)
+
+loadings = pd.DataFrame(
+    pca.components_.T,  # Transpose to make each row correspond to a feature
+    columns=[f"PC{i+1}" for i in range(pca.n_components_)],
+    index=numeric_df.columns  # Assuming `df` has the original feature names as columns
+)
+
+for i in range(pca.n_components_):
+    component = loadings.iloc[:, i]  # Get loadings for the i-th component
+    sorted_component = component.abs().sort_values(ascending=False)  # Sort by absolute value
+    print(f"\nTop features for Principal Component {i+1}:")
+    print(sorted_component.head(20))  # Display top 5 features for each component (adjust as needed)
+
 # wcss = []
 # k_values = range(1, 15)  # Try up to 15 clusters, for example
 # for k in k_values:
@@ -163,6 +182,7 @@ stats_scaled = scaler.fit_transform(numeric_df_imputed)
 # plt.xlabel('Number of clusters (k)')
 # plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
 # plt.show()
+
 
 # Use the optimal number of clusters based on the elbow graph
 optimal_k = 8  # Replace with the value you observe from the elbow graph
