@@ -13,6 +13,10 @@ table3 = leaguedashplayerstats.LeagueDashPlayerStats(season='2023-24').get_data_
 merged_df = pd.merge(table1, table2, on='PLAYER_ID', how='inner')
 df = pd.merge(merged_df, table3, on='PLAYER_ID', how='inner')
 
+# Save the merged DataFrame to a CSV file
+# df.to_csv('nba_player_data_2023_24.csv', index=False)
+
+
 # Drop non-numeric columns before scaling and clustering
 numeric_df = df.select_dtypes(include=['number'])
 
