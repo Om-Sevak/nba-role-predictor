@@ -142,7 +142,7 @@ def fetch_data_with_retries(func, *args, **kwargs):
 df = pd.read_csv('nba.csv')
 # Drop non-numeric columns before scaling and clustering
 numeric_df = df.select_dtypes(include=['number'])
-
+numeric_df = numeric_df.drop(columns=['PLAYER_ID'], errors='ignore')
 # Impute missing values with column mean
 imputer = SimpleImputer(strategy='mean')
 numeric_df_imputed = imputer.fit_transform(numeric_df)
