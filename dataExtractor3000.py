@@ -152,7 +152,7 @@ scaler = StandardScaler()
 stats_scaled = scaler.fit_transform(numeric_df_imputed)
 
 # Perform PCA
-pca = PCA(n_components=6)  # Set the number of components you need
+pca = PCA(n_components=4)  # Set the number of components you need
 df_pca = pca.fit_transform(stats_scaled)
 
 print("Explained variance ratio:", pca.explained_variance_ratio_)
@@ -165,9 +165,10 @@ loadings = pd.DataFrame(
 
 for i in range(pca.n_components_):
     component = loadings.iloc[:, i]  # Get loadings for the i-th component
-    sorted_component = component.abs().sort_values(ascending=False)  # Sort by absolute value
+    # Sort by absolute value but retain the original sign by reindexing
+    sorted_component = component.reindex(component.abs().sort_values(ascending=False).index)
     print(f"\nTop features for Principal Component {i+1}:")
-    print(sorted_component.head(20))  # Display top 5 features for each component (adjust as needed)
+    print(sorted_component.head(20))  # Display top 20 features for each component (adjust as needed)
 
 # wcss = []
 # k_values = range(1, 15)  # Try up to 15 clusters, for example
@@ -187,7 +188,7 @@ for i in range(pca.n_components_):
 # Use the optimal number of clusters based on the elbow graph
 optimal_k = 8  # Replace with the value you observe from the elbow graph
 kmeans = KMeans(n_clusters=optimal_k, random_state=42)
-df['Cluster'] = kmeans.fit_predict(stats_scaled)
+df['Cluster'] = kmeans.fit_predict(df_pca)
 
 # Print player names in each cluster
 for cluster in range(optimal_k):
@@ -195,4 +196,9 @@ for cluster in range(optimal_k):
     print(f"Cluster {cluster}:")
     print(players_in_cluster.tolist())
     print("\n" + "-" * 50 + "\n")
+    
+cluster_centers = pd.DataFrame(kmeans.cluster_centers_, columns=[f"PC{i+1}" for i in range(df_pca.shape[1])])
+
+print("Cluster centers in PCA space:")
+print(cluster_centers)
 
