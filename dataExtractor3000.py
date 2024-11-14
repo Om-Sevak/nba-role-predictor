@@ -190,6 +190,7 @@ optimal_k = 8  # Replace with the value you observe from the elbow graph
 kmeans = KMeans(n_clusters=optimal_k, random_state=42)
 df['Cluster'] = kmeans.fit_predict(df_pca)
 
+df.to_csv('clustered_data_with_labels.csv', index=False)
 # Print player names in each cluster
 for cluster in range(optimal_k):
     players_in_cluster = df[df['Cluster'] == cluster]['PLAYER_NAME']
