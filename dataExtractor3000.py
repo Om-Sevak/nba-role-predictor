@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import time
 from requests.exceptions import Timeout, ConnectionError, RequestException
@@ -152,6 +153,25 @@ numeric_df_imputed = imputer.fit_transform(numeric_df)
 scaler = StandardScaler()
 stats_scaled = scaler.fit_transform(numeric_df_imputed)
 
+# Perform PCA
+pca = PCA(n_components=4)  # Set the number of components you need
+df_pca = pca.fit_transform(stats_scaled)
+
+print("Explained variance ratio:", pca.explained_variance_ratio_)
+
+loadings = pd.DataFrame(
+    pca.components_.T,  # Transpose to make each row correspond to a feature
+    columns=[f"PC{i+1}" for i in range(pca.n_components_)],
+    index=numeric_df.columns  # Assuming `df` has the original feature names as columns
+)
+
+for i in range(pca.n_components_):
+    component = loadings.iloc[:, i]  # Get loadings for the i-th component
+    # Sort by absolute value but retain the original sign by reindexing
+    sorted_component = component.reindex(component.abs().sort_values(ascending=False).index)
+    print(f"\nTop features for Principal Component {i+1}:")
+    print(sorted_component.head(20))  # Display top 20 features for each component (adjust as needed)
+
 # Determine optimal k using elbow method for offensive clustering
 # wcss = []
 # k_values = range(1, 15)
@@ -165,6 +185,7 @@ stats_scaled = scaler.fit_transform(numeric_df_imputed)
 # plt.xlabel('Number of clusters (k)')
 # plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
 # plt.show()
+
 
 # Set the optimal number of clusters for offensive roles
 optimal_k = 8  # Adjust based on the elbow graph
@@ -247,11 +268,18 @@ for cluster in range(optimal_k_defensive):
     print(players_in_cluster.tolist())
     print("\n" + "-" * 50 + "\n")
 
+df['Cluster'] = kmeans.fit_predict(df_pca)
 
+df.to_csv('clustered_data_with_labels.csv', index=False)
 # Print player names in each cluster
 for cluster in range(optimal_k):
     players_in_cluster = df[df['Cluster'] == cluster]['PLAYER_NAME']
     print(f"Cluster {cluster}:")
     print(players_in_cluster.tolist())
     print("\n" + "-" * 50 + "\n")
+    
+cluster_centers = pd.DataFrame(kmeans.cluster_centers_, columns=[f"PC{i+1}" for i in range(df_pca.shape[1])])
+
+print("Cluster centers in PCA space:")
+print(cluster_centers)
 
