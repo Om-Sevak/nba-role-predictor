@@ -31,12 +31,12 @@ stats_scaled = scaler.fit_transform(numeric_df_imputed)
 Z = linkage(stats_scaled, method='ward')
 
 # Plot the dendrogram
-plt.figure(figsize=(10, 7))
-dendrogram(Z)
-plt.title('Dendrogram for Hierarchical Clustering')
-plt.xlabel('Players')
-plt.ylabel('Distance')
-plt.show()
+# plt.figure(figsize=(10, 7))
+# dendrogram(Z)
+# plt.title('Dendrogram for Hierarchical Clustering')
+# plt.xlabel('Players')
+# plt.ylabel('Distance')
+# plt.show()
 
 # Set the maximum distance or the number of clusters to get cluster labels
 max_distance = 18  # Adjust this based on the dendrogram visualization
