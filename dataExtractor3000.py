@@ -1,4 +1,4 @@
-from nba_api.stats.endpoints import playerestimatedmetrics, leaguedashplayerclutch, leaguedashplayerstats,leaguedashplayerbiostats, leaguehustlestatsplayer, playerdashptshots, playerdashboardbyshootingsplits
+from nba_api.stats.endpoints import playerestimatedmetrics, leaguedashplayerclutch, leaguedashplayerstats,leaguedashplayerbiostats, leaguehustlestatsplayer, playerdashptshots, playerdashboardbyshootingsplits, leagueseasonmatchups
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
@@ -139,9 +139,11 @@ def fetch_data_with_retries(func, *args, **kwargs):
 # df.to_csv('nba.csv', index=False)
 
 df = pd.read_csv('nba.csv')
+
 # Drop non-numeric columns before scaling and clustering
 numeric_df = df.select_dtypes(include=['number'])
 numeric_df = numeric_df.drop(columns=['PLAYER_ID'], errors='ignore')
+
 # Impute missing values with column mean
 imputer = SimpleImputer(strategy='mean')
 numeric_df_imputed = imputer.fit_transform(numeric_df)
@@ -150,24 +152,101 @@ numeric_df_imputed = imputer.fit_transform(numeric_df)
 scaler = StandardScaler()
 stats_scaled = scaler.fit_transform(numeric_df_imputed)
 
+# Determine optimal k using elbow method for offensive clustering
 # wcss = []
-# k_values = range(1, 15)  # Try up to 15 clusters, for example
+# k_values = range(1, 15)
 # for k in k_values:
 #     kmeans = KMeans(n_clusters=k, random_state=42)
 #     kmeans.fit(stats_scaled)
-#     wcss.append(kmeans.inertia_)  # inertia_ is the WCSS
-
+#     wcss.append(kmeans.inertia_)
 # plt.figure(figsize=(10, 6))
 # plt.plot(k_values, wcss, marker='o')
-# plt.title('Elbow Method For Optimal k')
+# plt.title('Elbow Method For Optimal k - Offensive Roles')
 # plt.xlabel('Number of clusters (k)')
 # plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
 # plt.show()
 
-# Use the optimal number of clusters based on the elbow graph
-optimal_k = 8  # Replace with the value you observe from the elbow graph
+# Set the optimal number of clusters for offensive roles
+optimal_k = 8  # Adjust based on the elbow graph
 kmeans = KMeans(n_clusters=optimal_k, random_state=42)
 df['Cluster'] = kmeans.fit_predict(stats_scaled)
+
+# Load defensive matchups data
+matchups_df = fetch_data_with_retries(leagueseasonmatchups.LeagueSeasonMatchups, season=seasonData)
+if matchups_df is not None:
+    matchups_df = matchups_df.get_data_frames()[0]
+
+# Merge offensive clusters with matchups data
+matchups_with_clusters = matchups_df.merge(df[['PLAYER_ID', 'Cluster']], left_on='OFF_PLAYER_ID', right_on='PLAYER_ID')
+matchups_with_clusters = matchups_with_clusters.rename(columns={'Cluster': 'Offensive_Cluster'})
+
+matchups_with_clusters['MATCHUP_TIME_MIN'] = matchups_with_clusters['MATCHUP_TIME_SEC'] / 60
+
+# Aggregate total matchup minutes each defender spends on each offensive cluster
+defensive_profile_df = (
+    matchups_with_clusters
+    .groupby(['DEF_PLAYER_ID', 'Offensive_Cluster'])
+    .agg(total_matchup_min=('MATCHUP_TIME_MIN', 'sum'))
+    .reset_index()
+)
+
+# Calculate total minutes each defender has played in matchups
+total_minutes_df = defensive_profile_df.groupby('DEF_PLAYER_ID')['total_matchup_min'].sum().reset_index()
+total_minutes_df = total_minutes_df.rename(columns={'total_matchup_min': 'total_minutes'})
+
+# Ensure columns are numeric for division
+defensive_profile_df['total_matchup_min'] = pd.to_numeric(defensive_profile_df['total_matchup_min'], errors='coerce')
+total_minutes_df['total_minutes'] = pd.to_numeric(total_minutes_df['total_minutes'], errors='coerce')
+
+# Fill any NaN values from conversion, if necessary
+defensive_profile_df['total_matchup_min'].fillna(0, inplace=True)
+total_minutes_df['total_minutes'].fillna(0, inplace=True)
+
+# Merge to calculate the percentage of time each defender spent guarding each offensive cluster
+defensive_profile_df = defensive_profile_df.merge(total_minutes_df, on='DEF_PLAYER_ID')
+defensive_profile_df['percentage_time'] = defensive_profile_df['total_matchup_min'] / defensive_profile_df['total_minutes']
+
+# Pivot to have each offensive cluster as a separate column for each defender
+defense_profile_pivot = defensive_profile_df.pivot(index='DEF_PLAYER_ID', columns='Offensive_Cluster', values='percentage_time').fillna(0)
+
+defense_profile_pivot.to_csv('test.csv', index=False)
+# Scale the defensive profile data
+scaler = StandardScaler()
+defense_profile_scaled = scaler.fit_transform(defense_profile_pivot)
+
+# Determine optimal k using elbow method for defensive clustering, if needed
+# wcss_defensive = []
+# k_values_defensive = range(1, 15)
+# for k in k_values_defensive:
+#     kmeans_defensive = KMeans(n_clusters=k, random_state=42)
+#     kmeans_defensive.fit(defense_profile_scaled)
+#     wcss_defensive.append(kmeans_defensive.inertia_)
+# plt.figure(figsize=(10, 6))
+# plt.plot(k_values_defensive, wcss_defensive, marker='o')
+# plt.title('Elbow Method For Optimal k - Defensive Roles')
+# plt.xlabel('Number of clusters (k)')
+# plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
+# plt.show()
+
+# Set the optimal number of clusters for defensive roles
+optimal_k_defensive = 5  # Adjust based on the elbow graph
+kmeans_defensive = KMeans(n_clusters=optimal_k_defensive, random_state=42)
+defensive_clusters = kmeans_defensive.fit_predict(defense_profile_scaled)
+
+# Add defensive clusters back to defense_profile_pivot
+defense_profile_pivot['Defensive_Cluster'] = defensive_clusters
+
+# Merge defensive clusters with the main DataFrame
+defensive_roles = defense_profile_pivot[['Defensive_Cluster']].reset_index()
+df = df.merge(defensive_roles, left_on='PLAYER_ID', right_on='DEF_PLAYER_ID', how='left')
+
+# Print players in each defensive cluster
+for cluster in range(optimal_k_defensive):
+    players_in_cluster = df[df['Defensive_Cluster'] == cluster]['PLAYER_NAME']
+    print(f"Defensive Cluster {cluster}:")
+    print(players_in_cluster.tolist())
+    print("\n" + "-" * 50 + "\n")
+
 
 # Print player names in each cluster
 for cluster in range(optimal_k):
