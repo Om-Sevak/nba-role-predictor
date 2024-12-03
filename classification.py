@@ -2,10 +2,11 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 
-data = pd.read_csv('clustered_data_with_labels.csv')
+data = pd.read_csv('clustered_players.csv')
 
 # Separate features and target variable
 features = data.drop(columns=['Cluster', 'PLAYER_NAME_x', 'PLAYER_NAME_y', 'PLAYER_NAME', 'PLAYER_ID']) 
+# features = data.drop(columns=['Cluster', 'PLAYER_NAME', 'DEF_PLAYER_ID']) 
 target = data['Cluster'] 
 
 model = RandomForestClassifier(random_state=42)
