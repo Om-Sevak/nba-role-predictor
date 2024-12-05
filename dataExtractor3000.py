@@ -1,15 +1,9 @@
 from nba_api.stats.endpoints import playerestimatedmetrics, leaguedashplayerclutch, leaguedashplayerstats,leaguedashplayerbiostats, leaguehustlestatsplayer, playerdashptshots, playerdashboardbyshootingsplits, leagueseasonmatchups
 from utils import fetch_data_with_retries, seasonData
 import pandas as pd
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
 import time
 from requests.exceptions import Timeout, ConnectionError, RequestException
 from urllib3.exceptions import ProtocolError
-from requests.exceptions import ReadTimeout
 # Fetching data for each table with retry mechanism
 
 def extractOffensive():
@@ -17,19 +11,19 @@ def extractOffensive():
     if table1 is not None:
         table1 = table1.get_data_frames()[0]
 
-    table4 = fetch_data_with_retries(leaguedashplayerbiostats.LeagueDashPlayerBioStats, season=seasonData)
-    if table4 is not None:
-        table4 = table4.get_data_frames()[0]
+    table2 = fetch_data_with_retries(leaguedashplayerbiostats.LeagueDashPlayerBioStats, season=seasonData)
+    if table2 is not None:
+        table2 = table2.get_data_frames()[0]
 
     table1 = table1[table1['MIN'] > 8]
     table1 = table1[table1['GP'] > 41]
-    fromTable1 = table1[['PLAYER_ID', 'PLAYER_NAME','MIN', 'E_PACE', 'E_TOV_PCT']]
+    fromTable1 = table1[['PLAYER_ID', 'PLAYER_NAME','MIN']]
     print('table1')
 
-    fromTable4 = table4[['PLAYER_ID', 'USG_PCT', 'AST_PCT']]
-    print('table4')
+    fromTable2 = table2[['PLAYER_ID', 'USG_PCT', 'AST_PCT']]
+    print('table2')
 
-    playerInfo = pd.merge(table1[['PLAYER_ID']], table4[['PLAYER_ID','TEAM_ID','PLAYER_NAME']], on='PLAYER_ID', how='inner')
+    playerInfo = pd.merge(table1[['PLAYER_ID']], table2[['PLAYER_ID','TEAM_ID','PLAYER_NAME']], on='PLAYER_ID', how='inner')
     #playerInfo = merged[['PLAYER_ID','TEAM_ID','PLAYER_NAME']]
 
     shot_data = [] 
@@ -70,8 +64,8 @@ def extractOffensive():
                     'CORNER_FREQ': (shotDistance['FGA'][3] + shotDistance['FGA'][4]) / fga,
                     'ATB_FREQ': shotDistance['FGA'][5] / fga,
                     'DUNK_FREQ': shotTech['FGA'][2] / fga,
-                    'HOOK_FREQ': shotTech['FGA'][5] / fga,
                     'LAYUP_FREQ': shotTech['FGA'][7] / fga,
+                    'HOOK_FREQ': shotTech['FGA'][5] / fga,               
                 })
                 success = True  
             except (Timeout, ConnectionError, RequestException, ProtocolError):
@@ -83,11 +77,11 @@ def extractOffensive():
                 break
         print("%s/%s: %s -> %s" %(index,playerInfo.shape[0],player_name,success))
         
-    print('done table6')
-    fromTable6 = pd.DataFrame(shot_data)
-    print('table6')
+    print('done table3')
+    fromTable3 = pd.DataFrame(shot_data)
+    print('table3')
     # List of dataframes to merge
-    dataframes = [fromTable1, fromTable4, fromTable6]
+    dataframes = [fromTable1, fromTable2, fromTable3]
 
     # Perform successive inner joins on 'PLAYER_ID' to keep only common players
     df = dataframes[0]
@@ -145,130 +139,12 @@ def extractDefensive(offClustered):
     )
 
     # Drop the duplicate PLAYER_ID column (if any)
-    defense_profile_with_name = defense_profile_with_name.drop(columns=['PLAYER_ID'], errors='ignore')
+    defense_profile_with_name = defense_profile_with_name.drop(columns=['DEF_PLAYER_ID'], errors='ignore')
 
     # Save the defensive profile with player names to a CSV file
-    defense_profile_with_name.to_csv('defensive_profile_with_name_filtered.csv', index=False)
+    # Convert all column names to strings
+    defense_profile_with_name.columns = defense_profile_with_name.columns.map(str)
 
-
-# df = pd.read_csv('clustered_players.csv')
-
-# Drop non-numeric columns before scaling and clustering
-# numeric_df = df.select_dtypes(include=['number'])
-# numeric_df = numeric_df.drop(columns=['PLAYER_ID'], errors='ignore')
-
-# # Impute missing values with column mean
-# imputer = SimpleImputer(strategy='mean')
-# numeric_df_imputed = imputer.fit_transform(numeric_df)
-
-# # Scale the numeric data
-# scaler = StandardScaler()
-# stats_scaled = scaler.fit_transform(numeric_df_imputed)
-
-# # Perform PCA
-# pca = PCA(n_components=4)  # Set the number of components you need
-# df_pca = pca.fit_transform(stats_scaled)
-
-# pca_df = pd.DataFrame(
-#     df_pca,
-#     columns=[f"PC{i+1}" for i in range(df_pca.shape[1])]
-# )
-# pca_df['PLAYER_ID'] = df['PLAYER_ID']
-# pca_df['PLAYER_NAME'] = df['PLAYER_NAME']
-
-# # Save PCA-transformed data to a CSV
-# pca_df.to_csv('pca_components.csv', index=False)
-# print("PCA components saved to pca_components.csv")
-
-# print("Explained variance ratio:", pca.explained_variance_ratio_)
-
-# loadings = pd.DataFrame(
-#     pca.components_.T,  # Transpose to make each row correspond to a feature
-#     columns=[f"PC{i+1}" for i in range(pca.n_components_)],
-#     index=numeric_df.columns  # Assuming `df` has the original feature names as columns
-# )
-
-# for i in range(pca.n_components_):
-#     component = loadings.iloc[:, i]  # Get loadings for the i-th component
-#     # Sort by absolute value but retain the original sign by reindexing
-#     sorted_component = component.reindex(component.abs().sort_values(ascending=False).index)
-#     print(f"\nTop features for Principal Component {i+1}:")
-#     print(sorted_component.head(20))  # Display top 20 features for each component (adjust as needed)
-
-# # # Determine optimal k using elbow method for offensive clustering
-# wcss = []
-# k_values = range(1, 15)
-# for k in k_values:
-#     kmeans = KMeans(n_clusters=k, random_state=42)
-#     kmeans.fit(df_pca)
-#     wcss.append(kmeans.inertia_)
-# plt.figure(figsize=(10, 6))
-# plt.plot(k_values, wcss, marker='o')
-# plt.title('Elbow Method For Optimal k - Offensive Roles')
-# plt.xlabel('Number of clusters (k)')
-# plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
-# plt.show()
-
-
-# # # Set the optimal number of clusters for offensive roles
-# optimal_k = 8  # Adjust based on the elbow graph
-# kmeans = KMeans(n_clusters=optimal_k, random_state=42)
-# df['Cluster'] = kmeans.fit_predict(stats_scaled)
-
-# Load defensive matchups data
-
-# # Scale the defensive profile data
-# scaler = StandardScaler()
-# defense_profile_scaled = scaler.fit_transform(defense_profile_pivot)
-
-# Determine optimal k using elbow method for defensive clustering, if needed
-# wcss_defensive = []
-# k_values_defensive = range(1, 15)
-# for k in k_values_defensive:
-#     kmeans_defensive = KMeans(n_clusters=k, random_state=42)
-#     kmeans_defensive.fit(defense_profile_scaled)
-#     wcss_defensive.append(kmeans_defensive.inertia_)
-# plt.figure(figsize=(10, 6))
-# plt.plot(k_values_defensive, wcss_defensive, marker='o')
-# plt.title('Elbow Method For Optimal k - Defensive Roles')
-# plt.xlabel('Number of clusters (k)')
-# plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
-# plt.show()
-
-# Set the optimal number of clusters for defensive roles
-# optimal_k_defensive = 6  # Adjust based on the elbow graph
-# kmeans_defensive = KMeans(n_clusters=optimal_k_defensive, random_state=42)
-# defensive_clusters = kmeans_defensive.fit_predict(df_pca)
-
-# # Add defensive clusters back to defense_profile_pivot
-# defense_profile_pivot['Defensive_Cluster'] = defensive_clusters
-
-# # Merge defensive clusters with the main DataFrame
-# defensive_roles = defense_profile_pivot[['Defensive_Cluster']].reset_index()
-# df = df.drop(columns=['Defensive_Cluster_x', 'Defensive_Cluster_y', 'Defensive_Cluster'], errors='ignore')
-# df = df.merge(defensive_roles[['DEF_PLAYER_ID', 'Defensive_Cluster']], 
-#               left_on='PLAYER_ID', 
-#               right_on='DEF_PLAYER_ID', 
-#               how='left')
-# # Print players in each defensive cluster
-# for cluster in range(optimal_k_defensive):
-#     players_in_cluster = df[df['Defensive_Cluster'] == cluster]['PLAYER_NAME']
-#     print(f"Defensive Cluster {cluster}:")
-#     print(players_in_cluster.tolist())
-#     print("\n" + "-" * 50 + "\n")
-
-# df['Cluster'] = kmeans.fit_predict(df_pca)
-
-# df.to_csv('test.csv', index=False)
-# # Print player names in each cluster
-# for cluster in range(optimal_k):
-#     players_in_cluster = df[df['Cluster'] == cluster]['PLAYER_NAME']
-#     print(f"Cluster {cluster}:")
-#     print(players_in_cluster.tolist())
-#     print("\n" + "-" * 50 + "\n")
-    
-# cluster_centers = pd.DataFrame(kmeans.cluster_centers_, columns=[f"PC{i+1}" for i in range(df_pca.shape[1])])
-
-# print("Cluster centers in PCA space:")
-# print(cluster_centers)
+    defense_profile_with_name.to_csv('defensive-data-%s.csv' %(seasonData), index=False)
+    return defense_profile_with_name
 

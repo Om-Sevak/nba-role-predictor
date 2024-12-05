@@ -3,12 +3,9 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
-from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from requests.exceptions import Timeout, ConnectionError, RequestException
-from urllib3.exceptions import ProtocolError
 from requests.exceptions import ReadTimeout
-seasonData = '2022-23'
+seasonData = '2023-24'
 # Load data from the API
 max_retries = 5
 retry_delay = 5  # seconds
@@ -67,7 +64,9 @@ def dataFrameScale(df):
 
     return stats_scaled, numeric_df
 
-def kMeansCluster(df, scaled, clusters):
+def kMeansCluster(df, clusters):
+    scaled,num = dataFrameScale(df)
+    elbowFunction(scaled)
     kmeans = KMeans(n_clusters=clusters, random_state=42)
     df['Cluster'] = kmeans.fit_predict(scaled)
     return df

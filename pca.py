@@ -1,19 +1,14 @@
-from utils import seasonData, elbowFunction, dataFrameScale
+from utils import seasonData, dataFrameScale
 import pandas as pd
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
 
 # how to use: put defensive/offensive in role
-def pcaCluster(role, clusters):
-    df = pd.read_csv('%s-data-%s.csv' %(role, seasonData))
+def pcaCluster(df, role, components):
 
     stats_scaled, numeric_df = dataFrameScale(df)
 
     # Perform PCA
-    pca = PCA(n_components=4)  # Set the number of components you need
+    pca = PCA(n_components=components)  # Set the number of components you need
     df_pca = pca.fit_transform(stats_scaled)
 
     pca_df = pd.DataFrame(
@@ -24,8 +19,8 @@ def pcaCluster(role, clusters):
     pca_df['PLAYER_NAME'] = df['PLAYER_NAME']
 
     # Save PCA-transformed data to a CSV
-    pca_df.to_csv('pca-components-%s-%s.csv' %(role, seasonData), index=False)
-    print("PCA components saved to pca_components-role-season.csv")
+    pca_df.to_csv(f'pca-components-{seasonData}.csv', index=False)
+    print("PCA components saved to pca_components-season.csv")
 
     print("Explained variance ratio:", pca.explained_variance_ratio_)
 
@@ -42,9 +37,4 @@ def pcaCluster(role, clusters):
         print(f"\nTop features for Principal Component {i+1}:")
         print(sorted_component.head(20))  # Display top 20 features for each component (adjust as needed)
 
-    elbowFunction(df_pca)
-
-    kmeans = KMeans(n_clusters=clusters, random_state=42)
-    df['Cluster'] = kmeans.fit_predict(df_pca)
-
-    return df
+    return pca_df
