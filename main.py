@@ -7,12 +7,12 @@ from utils import printPlayerCluster, seasonData, kMeansCluster
 from classification import classificationAccuracy
 
 # Set parameters directly in the script
-offense_method = 'hierarchical'  # Options: 'pca_kmeans', 'pca_hierarchical', 'kmeans', 'hierarchical'
+offense_method = 'pca_hierarchical'  # Options: 'pca_kmeans', 'pca_hierarchical', 'kmeans', 'hierarchical'
 offense_clusters = 8  # Number of clusters for KMeans or PCA + KMeans
-offense_distance = 13 # Distance threshold for Hierarchical clustering
+offense_distance = 9 # Distance threshold for Hierarchical clustering
 offense_pca_components = 4  # Number of PCA components (if using PCA-based methods) 4 usually good
 
-defense_method = 'hierarchical'  # Options: 'pca_kmeans', 'pca_hierarchical', 'kmeans', 'hierarchical'
+defense_method = 'pca_hierarchical'  # Options: 'pca_kmeans', 'pca_hierarchical', 'kmeans', 'hierarchical'
 defense_clusters = 6  # Number of clusters for KMeans or PCA + KMeans
 defense_distance = 11  # Distance threshold for Hierarchical clustering
 defense_pca_components = 4  # Number of PCA components (if using PCA-based methods)
