@@ -8,6 +8,7 @@ make sure you have all the following files are in the same folder:
 - hierarchicalClustering.py
 - classification.py
 - offensive-data-2023-24.csv
+- requirements.txt
 if you wont have offensive-data-2023-24.csv, the program will automatically try and get the data from the API, which might take a long time (over an hour in some instances)
 
 
