@@ -13,6 +13,18 @@ if you wont have offensive-data-2023-24.csv, the program will automatically try 
 
 PROGRAM RUNNING INSTRUCTIONS:
 
+Install Dependencies:
+
+It is recommended to create an seperate python environment and install this dependencies in that environment.
+Command to create a python environment:
+python -m venv nba
+Activate Environment: 
+nba\Scripts\activate
+
+We have a text file "requirements.txt" for dependency management. To install all the dependencies, use following command: 
+pip install -r requirements.txt
+
+
 run main.py , you will get 2 pictures pop ups (dendograms if you use hierarchical clustering, elbow functions if you use kMean), first you will get a picture explaining the offensive clusters, then a picture explaining the defensive clusters. you need to close those pictures before the program keeps running, not minimize, but actually close them. all the output will be in the terminal.
 
 PROGRAM MODIFICATIONS:
