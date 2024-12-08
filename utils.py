@@ -5,67 +5,70 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 import matplotlib.pyplot as plt
 from requests.exceptions import ReadTimeout
-seasonData = '2023-24'
-# Load data from the API
-max_retries = 5
-retry_delay = 5  # seconds
 
-# Function to fetch data with retry and exponential backoff
-def fetch_data_with_retries(func, *args, **kwargs):
+# you can change the season here if you want in the same format as '2023-24'
+# keep in mind new data extraction takes about an hour (on a good day)
+seasonData = '2023-24'
+maxRetries = 5
+retryDelay = 5  
+
+# function to fetch data. needed to put exponential backoff retries because we had a lot of trouble with timeouts
+def fetchDataWithRetries(func, *args, **kwargs):
     retries = 0
-    while retries < max_retries:
+    while retries < maxRetries:
         try:
-            # Call the API function and get data
             return func(*args, **kwargs)
         except ReadTimeout:
             retries += 1
-            print(f"ReadTimeout error encountered. Retrying {retries}/{max_retries}...")
-            time.sleep(retry_delay * (2 ** retries))  # Exponential backoff
+            print(f"ReadTimeout error encountered. Retrying {retries}/{maxRetries}...")
+            time.sleep(retryDelay * (2 ** retries)) 
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             break
     return None 
 
-def printPlayerCluster(fileName, role):
-    df = pd.read_csv(fileName)
-
+# takes a dataframe and prints out all the clusters with the players in the cluster
+def printPlayerCluster(df, role):
     clusters = df['Cluster'].unique()
     clusters.sort()
 
     for cluster in clusters:
-        players_in_cluster = df[df['Cluster'] == cluster]['PLAYER_NAME']
+        playersInCluster = df[df['Cluster'] == cluster]['PLAYER_NAME']
         print(f"{role} cluster {cluster}:")
-        print(players_in_cluster.tolist())
+        print(playersInCluster.tolist())
         print("\n" + "-" * 50 + "\n")
 
+# prints out an elbow function for kmeans clustering
 def elbowFunction(df):
     wcss = []
-    k_values = range(1, 15)
-    for k in k_values:
+    kValues = range(1, 15)
+    for k in kValues:
         kmeans = KMeans(n_clusters=k, random_state=42)
         kmeans.fit(df)
         wcss.append(kmeans.inertia_)
     plt.figure(figsize=(10, 6))
-    plt.plot(k_values, wcss, marker='o')
+    plt.plot(kValues, wcss, marker='o')
     plt.title('Elbow Method For Optimal k')
     plt.xlabel('Number of clusters (k)')
     plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
     plt.show()
 
+# makes the data numeric so the player name and other columns that are string gets thrown out. also scales the data
 def dataFrameScale(df):
-    numeric_df = df.select_dtypes(include=['number'])
-    numeric_df = numeric_df.drop(columns=['PLAYER_ID'], errors='ignore')
+    numericDf = df.select_dtypes(include=['number'])
+    numericDf = numericDf.drop(columns=['PLAYER_ID'], errors='ignore')
 
     imputer = SimpleImputer(strategy='mean')
-    numeric_df_imputed = imputer.fit_transform(numeric_df)
+    numericDfImputed = imputer.fit_transform(numericDf)
 
     scaler = StandardScaler()
-    stats_scaled = scaler.fit_transform(numeric_df_imputed)
+    statsScaled = scaler.fit_transform(numericDfImputed)
 
-    return stats_scaled, numeric_df
+    return statsScaled, numericDf
 
+# preform kmean clustering based on how many clusters you want
 def kMeansCluster(df, clusters):
-    scaled,num = dataFrameScale(df)
+    scaled, num = dataFrameScale(df)
     elbowFunction(scaled)
     kmeans = KMeans(n_clusters=clusters, random_state=42)
     df['Cluster'] = kmeans.fit_predict(scaled)

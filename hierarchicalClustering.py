@@ -4,24 +4,21 @@ import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import matplotlib.pyplot as plt
 
-
+# preforms hierarchical clustering based on how much distance you want between clusters
 def hierarchicalCluster(df, distance):
 
-    numeric_df = df.select_dtypes(include=['number'])
-    numeric_df = numeric_df.drop(columns=['PLAYER_ID'], errors='ignore')
-    # Impute missing values with column mean
+    numericDf = df.select_dtypes(include=['number'])
+    numericDf = numericDf.drop(columns=['PLAYER_ID'], errors='ignore')
+
     imputer = SimpleImputer(strategy='mean')
-    numeric_df_imputed = imputer.fit_transform(numeric_df)
+    numericDfImputed = imputer.fit_transform(numericDf)
 
-    # Scale the numeric data
     scaler = StandardScaler()
-    stats_scaled = scaler.fit_transform(numeric_df_imputed)
+    statsScaled = scaler.fit_transform(numericDfImputed)
 
+    Z = linkage(statsScaled, method='ward')
 
-    # Generate the linkage matrix
-    Z = linkage(stats_scaled, method='ward')
-
-    # Plot the dendrogram
+    # plot the dendrogram
     plt.figure(figsize=(10, 7))
     dendrogram(Z)
     plt.title('Dendrogram for Hierarchical Clustering')
@@ -29,14 +26,8 @@ def hierarchicalCluster(df, distance):
     plt.ylabel('Distance')
     plt.show()
 
-    # Set the maximum distance or the number of clusters to get cluster labels
-    max_distance = distance # Adjust this based on the dendrogram visualization
-    clusters = fcluster(Z, max_distance, criterion='distance')
+    maxDistance = distance  
+    clusters = fcluster(Z, maxDistance, criterion='distance')
     df['Cluster'] = clusters
-
-
-    # Print player names in each cluster
-    unique_clusters = df['Cluster'].unique()
-    unique_clusters.sort()
 
     return df
